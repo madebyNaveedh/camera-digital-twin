@@ -113,5 +113,4 @@ camera-digital-twin/
 └── README.md
 ```
 
-## License
-MIT
+

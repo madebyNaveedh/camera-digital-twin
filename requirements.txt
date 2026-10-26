@@ -1,0 +1,10 @@
+# Real-Time Digital Twin Dependencies
+# Note: Core libraries are already present in Ubuntu 22.04 / Python 3.10 environment
+numpy>=1.22.0
+opencv-python>=4.5.0
+pyserial>=3.5
+pyyaml>=5.4.1
+matplotlib>=3.5.0
+scipy>=1.8.0
+scikit-learn>=1.0.0
+coppeliasim_zmqremoteapi_client>=0.1.0

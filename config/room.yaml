@@ -1,0 +1,35 @@
+# Physical Room and Virtual Scene Configuration
+room:
+  name: "Physical Laboratory Room Twin"
+  # Dimensions in meters
+  width: 5.0    # X-axis extent (-2.5 to +2.5)
+  length: 4.0   # Y-axis extent (-2.0 to +2.0)
+  height: 2.5   # Z-axis height
+  wall_thickness: 0.10
+  wall_height: 1.0   # Visible wall height for clean viewing
+
+# Room coordinate frame origin definition:
+# Origin (0,0,0) is at the center of the room floor.
+# X points East / Forward along room width
+# Y points North / Left along room length
+# Z points Up
+origin:
+  description: "Room center at floor level"
+  x: 0.0
+  y: 0.0
+  z: 0.0
+
+# Fixed boundaries / walls for collision and boundary checks
+boundaries:
+  x_min: -2.35
+  x_max: 2.35
+  y_min: -1.85
+  y_max: 1.85
+
+# Visual styling
+colors:
+  floor: [0.85, 0.85, 0.88]
+  walls: [0.35, 0.45, 0.55]
+  fixed_objects: [0.5, 0.5, 0.5]
+  dynamic_obstacles: [0.95, 0.25, 0.20]  # Vibrant red for detected obstacles
+  robot_goal: [0.15, 0.85, 0.35]         # Vibrant green for goal

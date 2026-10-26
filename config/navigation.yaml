@@ -1,0 +1,32 @@
+# Autonomous Robot Navigation Configuration
+
+robot:
+  model: "Pioneer P3DX"
+  # Kinematics parameters
+  wheel_radius: 0.0975       # meters (195mm diameter)
+  wheel_base: 0.381          # meters (track width)
+  max_linear_speed: 0.40     # m/s
+  max_angular_speed: 1.0     # rad/s
+  acceleration_linear: 0.5   # m/s^2
+
+waypoints:
+  # Default mission coordinates in Room Frame [x, y]
+  start: [-1.6, -1.2]
+  goal: [1.6, 1.2]
+  goal_tolerance: 0.15       # Distance threshold to consider goal reached (m)
+  
+navigation:
+  controller_type: "apf"      # Artificial Potential Field with Reactive Avoidance
+  lookahead_distance: 0.50   # meters
+  
+  # Safety zones
+  safety_distance: 0.55      # Slow down and deflect when obstacle within this range (m)
+  critical_stop_distance: 0.35 # Hard stop if obstacle within this boundary (m)
+  
+  # Potential field weights
+  attractive_gain: 1.2
+  repulsive_gain: 0.8
+  repulsive_influence_distance: 0.90
+  
+  # Control loop rate
+  control_rate_hz: 20.0

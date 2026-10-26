@@ -1,0 +1,66 @@
+# Camera-Driven Digital Twin Configuration (Square Box Arena)
+
+camera:
+  # Logitech USB Webcam is device_index 2 (auto-fallback to 0)
+  device_index: 2
+  width: 640
+  height: 480
+  fps: 30
+  backend: "V4L2"
+
+tracker:
+  # Tracking mode: 'color' or 'aruco'
+  mode: "color"
+  
+  # Standard color presets: 'blue', 'green', 'red'
+  color_preset: "blue"
+
+  # ArUco parameters
+  aruco:
+    dictionary: "DICT_4X4_50"
+    target_id: 0
+    marker_size_m: 0.08
+
+  color:
+    min_area_pixels: 250
+
+coordinate_mapping:
+  # Active Desk Tracking Zone (pixels)
+  image_roi:
+    u_min: 100
+    u_max: 540
+    v_min: 60
+    v_max: 420
+
+  # Compact Square Arena Bounds (meters)
+  # Interior of 3.2m x 3.2m square box arena
+  sim_workspace:
+    x_min: -1.4
+    x_max: 1.4
+    y_min: -1.4
+    y_max: 1.4
+    floor_z: 0.0
+    obstacle_height: 0.50
+    obstacle_radius: 0.15
+
+  # Reduced Natural Sensitivity Gain (1.0 = direct 1:1 desk-to-arena mapping):
+  # Provides calm, smooth, predictable object placement without jumping.
+  # Adjust live with '+' and '-' keys.
+  sensitivity_gain: 1.0
+  smoothing_alpha: 0.70
+  loss_timeout_seconds: 2.0
+
+simulation:
+  host: "localhost"
+  port: 23000
+  
+  # Pioneer P3DX mobile robot
+  enable_robot: true
+  robot_patrol_speed: 0.16      # Calm, steady perimeter patrol speed (m/s)
+  
+  # Center safety zone (meters)
+  safety_zone:
+    x_min: -0.45
+    x_max: 0.45
+    y_min: -0.45
+    y_max: 0.45

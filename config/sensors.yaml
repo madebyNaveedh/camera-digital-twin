@@ -1,0 +1,64 @@
+# Physical Sensors and Calibration Parameters
+
+lidar:
+  model: "RPLIDAR A1 M8"
+  port: "/dev/ttyUSB0"
+  baudrate: 115200
+  timeout_seconds: 1.0
+  # Valid measurement bounds
+  range_min: 0.15     # meters
+  range_max: 10.0     # meters
+  angle_min: 0.0      # degrees
+  angle_max: 360.0    # degrees
+  
+  # Sensor mounting position in the Physical Room frame (meters and degrees)
+  mounting:
+    x: 0.0            # LiDAR mounted at room center
+    y: 0.0
+    z: 0.25           # 25 cm above floor
+    yaw_deg: 0.0      # Sensor 0-degree angle aligned with +X axis
+    pitch_deg: 0.0
+    roll_deg: 0.0
+
+  # Automatic fallback to high-fidelity mock if hardware is disconnected
+  fallback_synthetic: true
+  mock_noise_std: 0.015
+
+camera:
+  model: "Syntek Integrated HD Camera"
+  device_index: 0
+  width: 640
+  height: 480
+  fps: 30
+  capture_backend: "V4L2"
+  
+  # Camera mounting position in the Physical Room frame
+  mounting:
+    x: 0.0
+    y: 0.0
+    z: 0.85
+    yaw_deg: 0.0
+    pitch_deg: -10.0  # Slightly angled downwards to observe floor
+    roll_deg: 0.0
+
+perception:
+  # Clustering parameters for 2D LiDAR points
+  clustering:
+    distance_threshold: 0.28    # Max distance between points in same cluster (m)
+    min_cluster_size: 4         # Minimum points to qualify as obstacle candidate
+    max_cluster_size: 250       # Reject room walls or massive clusters
+    min_obstacle_radius: 0.05   # Minimum radius of obstacle cylinder (m)
+    max_obstacle_radius: 0.80   # Maximum radius of single obstacle (m)
+
+  # Filtering
+  room_bounds_filtering: true   # Automatically filter points outside room perimeter
+  outlier_removal_k: 4
+  outlier_std_ratio: 1.5
+
+digital_twin_sync:
+  # Association and temporal tracking
+  association_distance_threshold: 0.45  # Max distance to match previous obstacle (m)
+  confirmation_frames: 2                # Scans needed before showing in virtual twin
+  removal_timeout_seconds: 2.5          # Time without detection before removing obstacle
+  update_rate_hz: 10.0                  # Synchronisation loop frequency
+  stale_data_timeout_seconds: 2.0       # Mark sensor data stale if older than this

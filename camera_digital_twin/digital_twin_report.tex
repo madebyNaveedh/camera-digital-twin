@@ -1,5 +1,5 @@
 \documentclass[10pt,a4paper]{article}
-\usepackage[top=1.4cm,bottom=1.4cm,left=1.5cm,right=1.5cm]{geometry}
+\usepackage[top=1.35cm,bottom=1.35cm,left=1.5cm,right=1.5cm]{geometry}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{booktabs}
@@ -14,7 +14,7 @@
 % Section styling
 \titleformat{\section}{\normalsize\bfseries\color{blue!75!black}}{}{0em}{}[\vspace{-2pt}\titlerule]
 \titleformat{\subsection}{\small\bfseries\color{black}}{}{0em}{}
-\titlespacing*{\section}{0pt}{6pt}{3pt}
+\titlespacing*{\section}{0pt}{5pt}{3pt}
 \titlespacing*{\subsection}{0pt}{4pt}{2pt}
 
 \hypersetup{
@@ -27,114 +27,116 @@
 
 % Header block
 \begin{center}
-    {\Large \textbf{Camera-Driven Real-Time Digital Twin}}\\[2pt]
-    {\normalsize Autonomous Pioneer P3DX Navigation with Physical Obstacle Synchronisation}\\[3pt]
-    \small \textbf{Environment:} Ubuntu 22.04 LTS $\cdot$ Python 3.10 $\cdot$ OpenCV 4.8 $\cdot$ CoppeliaSim Edu 4.10 (ZeroMQ API)\\[-2pt]
+    {\Large \textbf{Camera-Driven Mobile Robot Digital Twin}}\\[2pt]
+    {\normalsize Physical Object Tracking and Real-Time Obstacle Synchronisation in CoppeliaSim}\\[3pt]
+    \small \textbf{Stack:} Python 3.10 $\cdot$ OpenCV 4.8 $\cdot$ CoppeliaSim Edu 4.10 (ZeroMQ API) $\cdot$ Ubuntu 22.04 LTS\\[-2pt]
     \rule{\linewidth}{0.6pt}
 \end{center}
 
 \vspace{-6pt}
 
-\section{System Overview \& Architecture}
-This digital twin links a physical desk observation area to a 3D virtual simulation in \textbf{CoppeliaSim}. A real camera observes physical markers or colored objects, estimates their coordinates in real time, synchronises their state into an open $3.0\text{m} \times 3.0\text{m}$ virtual arena, and drives a simulated \textbf{Pioneer P3DX} mobile robot that navigates autonomously while reacting safely to obstacle introductions.
+\section{System Overview}
+This project implements a real-time digital twin connecting a desktop camera to the \textbf{CoppeliaSim} robotics simulator. A physical camera observes a defined desk working area and tracks either a printed ArUco marker or a colored object (Red, Green, Blue). The extracted 2D pixel coordinates are mapped onto a $3.0\text{m} \times 3.0\text{m}$ virtual arena, updating a simulated obstacle position in real time. Inside the virtual environment, a \textbf{Pioneer P3DX} mobile robot autonomously patrols a perimeter path and halts safely whenever the obstacle is moved into its forward route.
 
-\vspace{2pt}
+\vspace{3pt}
 \begin{center}
-    \includegraphics[width=0.96\linewidth]{report_assets/fig_architecture.png}\\[-4pt]
-    \small \textbf{Figure 1:} Real-time pipeline: physical webcam sensing $\rightarrow$ perception $\rightarrow$ spatial mapping $\rightarrow$ virtual twin.
+    \includegraphics[width=0.96\linewidth]{report_assets/fig_architecture.png}\\[-3pt]
+    \small \textbf{Figure 1:} Digital twin pipeline: camera tracking $\rightarrow$ coordinate mapping $\rightarrow$ CoppeliaSim simulation.
 \end{center}
-\vspace{-4pt}
+\vspace{-3pt}
 
-The pipeline executes asynchronously at \textbf{30 FPS} across four dedicated stages:
+The pipeline operates in real time at \textbf{30 FPS} through four connected steps:
 \begin{enumerate}
-    \item \textbf{Physical Sensing:} A Logitech USB webcam captures RGB frames ($640\times480$ @ 30 FPS) via Linux V4L2.
-    \item \textbf{Perception Engine:} Extracts object centroid $(u_t, v_t)$ in pixel space with sub-millisecond execution.
-    \item \textbf{Spatial Transformation:} Maps pixel coordinates to simulation coordinates $(X_{\text{sim}}, Y_{\text{sim}})$ with natural desk sensitivity.
-    \item \textbf{Virtual Twin Synchronisation:} Updates the virtual obstacle in CoppeliaSim via ZeroMQ Remote API ($<15\text{ ms}$ latency).
+    \item \textbf{Video Capture:} Captures $640\times480$ RGB frames from a standard USB webcam using OpenCV.
+    \item \textbf{Object Tracking:} Extracts the physical object centroid $(u, v)$ in image space.
+    \item \textbf{Coordinate Mapping:} Normalizes pixel coordinates to arena coordinates $(X_{\text{sim}}, Y_{\text{sim}})$ with jitter smoothing.
+    \item \textbf{Simulation Interface:} Synchronises obstacle position and reads Pioneer robot telemetry via the ZeroMQ API.
 \end{enumerate}
 
-\section{Real-Time Perception Engine}
-To guarantee deterministic, high-speed tracking without neural network inference overhead, two perception modes are supported:
+\section{Physical Object Tracking}
+The vision module provides two reliable tracking modes without requiring heavy deep-learning dependencies:
 \begin{itemize}
-    \item \textbf{ArUco Fiducial Marker Tracking:} Detects predefined \texttt{DICT\_4X4\_50} markers. Four high-contrast corners are resolved to sub-pixel accuracy, computing the geometric centroid with high immunity to ambient illumination changes.
-    \item \textbf{Three-Color Presets (HSV):} Provides three clean, mutually exclusive color filters tailored to common objects:
+    \item \textbf{ArUco Marker Tracking:} Detects standard \texttt{DICT\_4X4\_50} fiducial markers. The detector resolves marker corner coordinates and computes the center point $(c_u, c_v)$. This provides robust, flicker-free tracking across varying room illumination.
+    \item \textbf{HSV Color Tracking:} Implements color segmentation with calibrated presets for common colored markers:
     \begin{itemize}
         \item \textbf{Blue Preset [Key 1]:} $H \in [100, 135]$, $S \in [100, 255]$, $V \in [60, 255]$
         \item \textbf{Green Preset [Key 2]:} $H \in [35, 85]$, $S \in [70, 255]$, $V \in [50, 255]$
-        \item \textbf{Red Preset [Key 3]:} Wraps hue boundary ($H \in [0, 10] \cup [168, 180]$, $S \in [100, 255]$, $V \in [70, 255]$)
+        \item \textbf{Red Preset [Key 3]:} Handles hue wraparound ($H \in [0, 10] \cup [168, 180]$, $S \in [100, 255]$, $V \in [70, 255]$)
     \end{itemize}
-    Binary masks are filtered with morphological opening and closing ($5\times5$ ellipse) to eliminate salt-and-pepper noise before computing spatial moments ($c_u = M_{10}/M_{00}, c_v = M_{01}/M_{00}$).
+    Noise is cleaned using morphological opening and closing with a $5\times5$ kernel. The object center is calculated from spatial moments ($c_u = M_{10}/M_{00},\; c_v = M_{01}/M_{00}$).
 \end{itemize}
 
-\section{Bilinear Coordinate Mapping \& Sensitivity Scaling}
-The physical camera monitors an active desk tracking zone:
+\section{Desk-to-Arena Coordinate Transformation}
+A region of interest (ROI) on the camera view defines the active desk workspace:
 \begin{equation}
     u \in [u_{\text{min}}, u_{\text{max}}] = [100, 540]\text{ px}, \quad v \in [v_{\text{min}}, v_{\text{max}}] = [60, 420]\text{ px}
 \end{equation}
-Raw coordinates are normalized $\bar{u}, \bar{v} \in [-1.0, 1.0]$. A sensitivity gain ($G = 1.0$) maps natural desk hand movements directly across the $3.0\text{m} \times 3.0\text{m}$ virtual arena ($X, Y \in [-1.4\text{m}, +1.4\text{m}]$), preventing the object from inadvertently exiting the camera frame. An Exponential Moving Average (EMA) filter eliminates high-frequency hand jitter:
+Coordinates are normalized to $\bar{u}, \bar{v} \in [-1.0, 1.0]$ and scaled linearly to virtual arena coordinates $(X_{\text{sim}}, Y_{\text{sim}}) \in [-1.4\text{m}, +1.4\text{m}]$. Hand jitter during physical object movement is smoothed using an Exponential Moving Average (EMA) filter:
 \begin{equation}
-    \mathbf{p}_{\text{filtered}}[t] = \alpha \cdot \mathbf{p}_{\text{raw}}[t] + (1 - \alpha) \cdot \mathbf{p}_{\text{filtered}}[t-1], \quad \alpha = 0.70
+    \mathbf{p}_{\text{smooth}}[t] = \alpha \cdot \mathbf{p}_{\text{raw}}[t] + (1 - \alpha) \cdot \mathbf{p}_{\text{smooth}}[t-1], \quad \alpha = 0.70
 \end{equation}
-A state-holding watchdog preserves the last known 3D position for $2.0\text{ seconds}$ if the physical object leaves the camera frame.
+If the object is removed from the camera view, the system maintains its last known position for $2.0\text{ seconds}$ before hiding the obstacle, preventing abrupt jump artifacts in the simulation.
 
 \newpage
 
-\section{Virtual Arena \& Pioneer P3DX Simulation}
-The virtual room is modelled in \textbf{CoppeliaSim Edu 4.10} as a clean, open $3.0\text{m} \times 3.0\text{m}$ square box arena sitting on a $5\text{m} \times 5\text{m}$ concrete foundation. All interior crossbars and divider walls were removed, leaving an unobstructed patrol path. Boundary wall heights were set to $0.45\text{m}$, ensuring full, unoccluded visibility of the robot and obstacle from the top-down isometric camera.
+\section{CoppeliaSim Environment \& Robot Navigation}
+The virtual room is modelled in \textbf{CoppeliaSim Edu 4.10} as an open $3.0\text{m} \times 3.0\text{m}$ square box arena with $0.45\text{m}$ wall heights. The lowered wall height ensures full visibility of the robot, path, and obstacle from an overhead isometric perspective.
 
 \vspace{4pt}
 \noindent
 \begin{minipage}[t]{0.485\linewidth}
     \centering
     \includegraphics[width=\linewidth]{report_assets/fig_tracking_hud.png}\\[-3pt]
-    \small \textbf{Figure 2:} OpenCV HUD with desk ROI \& coordinates.
+    \small \textbf{Figure 2:} OpenCV tracking HUD with desk ROI.
 \end{minipage}
 \hfill
 \begin{minipage}[t]{0.485\linewidth}
     \centering
     \includegraphics[width=\linewidth]{report_assets/fig_coppelia_twin.png}\\[-3pt]
-    \small \textbf{Figure 3:} Synchronised CoppeliaSim 3D arena \& Pioneer robot.
+    \small \textbf{Figure 3:} CoppeliaSim 3D arena with Pioneer robot.
 \end{minipage}
 \vspace{2pt}
 
-\subsection{Autonomous Square Perimeter Patrol}
-The differential-drive \textbf{Pioneer P3DX} ($R = 0.0975\text{m}$, $L = 0.381\text{m}$) navigates a continuous square circuit around the arena perimeter across four waypoints:
+\subsection{Perimeter Waypoint Following}
+The differential-drive \textbf{Pioneer P3DX} mobile robot navigates a continuous square perimeter route around the arena across four corner waypoints:
 \begin{equation}
     \mathbf{W}_0 (+0.95, -0.95) \longrightarrow \mathbf{W}_1 (+0.95, +0.95) \longrightarrow \mathbf{W}_2 (-0.95, +0.95) \longrightarrow \mathbf{W}_3 (-0.95, -0.95)
 \end{equation}
 \begin{itemize}
-    \item \textbf{Perimeter Cruising:} Linear forward velocity $v = 0.16\text{ m/s}$ with proportional yaw steering ($k_p = 0.85$).
-    \item \textbf{Zero-Radius Corner Turning:} Upon reaching a corner waypoint ($d < 0.16\text{m}$), the robot halts linear motion ($v = 0.0\text{ m/s}$) and rotates in place ($\omega = 0.60\text{ rad/s}$) until aligned with the next leg. This eliminates wide turn radii that would otherwise clip boundary walls.
+    \item \textbf{Straight Navigation:} The robot drives toward the active waypoint at linear velocity $v = 0.16\text{ m/s}$ with proportional yaw correction ($k_p = 0.85$) to keep heading aligned.
+    \item \textbf{In-Place Corner Turning:} When the robot reaches within $0.16\text{m}$ of a corner waypoint, it stops linear motion ($v = 0.0\text{ m/s}$) and turns in place ($\omega = 0.60\text{ rad/s}$) until oriented toward the next waypoint. This prevents wide turns that could bring the robot into contact with boundary walls.
 \end{itemize}
 
-\subsection{Dual-Layer Reactive Collision Avoidance}
-The Pioneer robot responds autonomously to physical obstacle manipulations via a dual-layer safety mechanism:
+\subsection{Obstacle Detection \& Safety Halting}
+The robot monitors the physical obstacle's digital twin position relative to its current pose:
 \begin{enumerate}
-    \item \textbf{Virtual Heading Cone Evaluation:} The controller continuously measures the relative vector between the robot and virtual obstacle. If the obstacle is within $0.70\text{m}$ and inside a frontal heading cone of $\pm 50^\circ$, wheel velocities immediately halt with status \texttt{OBSTACLE BLOCKING PATH}. Once the physical object is moved away, the robot smoothly resumes its perimeter loop.
-    \item \textbf{Frontal Ultrasonic Clearance Check:} Eight onboard Pioneer ultrasonic sensors are polled in real time. If any reading drops below $0.28\text{m}$, the robot halts with status \texttt{WALL CLEARANCE HALT}.
-    \item \textbf{Anti-Fall Watchdog:} If the robot height drops ($Z < 0.05\text{m}$) or exceeds bounds, the supervisor automatically recovers and re-positions the robot safely at waypoint $\mathbf{W}_0$.
+    \item \textbf{Forward Cone Safety Check:} The controller calculates the distance and heading angle to the virtual obstacle. If the obstacle is within $0.65\text{m}$ and inside a forward heading cone of $\pm 50^\circ$, wheel velocities are set to zero (\texttt{OBSTACLE BLOCKING PATH}). When the physical object is moved away, the robot resumes its perimeter route.
+    \item \textbf{Front Ultrasonic Clearance:} Readings from the robot's front ultrasonic sensors (indices 2 through 5) are polled in real time. If an object is detected closer than $0.18\text{m}$, the robot halts as a safety safeguard.
+    \item \textbf{State Recovery:} If the robot tilts or leaves the floor boundary ($Z < 0.05\text{m}$), the interface automatically resets its position safely to waypoint $\mathbf{W}_0$.
 \end{enumerate}
 
-\section{System Performance Metrics}
+\section{System Configuration \& Parameters}
 \vspace{-2pt}
 \begin{center}
 \small
-\begin{tabular}{lll}
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lll}
 \toprule
-\textbf{Subsystem Metric} & \textbf{Value / Specification} & \textbf{Operational Verification} \\
+\textbf{Component} & \textbf{Configuration / Value} & \textbf{Description} \\
 \midrule
-Camera Frame Rate & $640\times480$ @ 30.0 FPS & Smooth, non-blocking capture via V4L2 backend \\
-Centroid Extraction Latency & $3.2\text{ ms}$ (ArUco) / $4.1\text{ ms}$ (Color) & Deterministic, zero neural network overhead \\
-CoppeliaSim ZeroMQ Latency & $11.4\text{ ms}$ average round-trip & Real-time position updates to virtual cylinder \\
-Perimeter Patrol Stability & $> 20$ consecutive loops & 100\% zero-radius corner alignment; no wall collisions \\
-Obstacle Reaction Distance & Safety halt at $0.70\text{ m}$ forward cone & Instant halt; immediate loop resumption on removal \\
-Arena Geometry & $3.0\text{m} \times 3.0\text{m}$ (Wall height $0.45\text{m}$) & 100\% unobstructed isometric camera visibility \\
+Camera Input & $640\times480$ @ 30 FPS & Standard USB webcam via OpenCV V4L2 backend \\
+Vision Tracking & ArUco (4x4) and HSV Presets & Supports ArUco marker or Red, Green, Blue objects \\
+Desk Region of Interest & $[100, 540]\times[60, 420]\text{ px}$ & Active desk area mapped to $[-1.4\text{m}, +1.4\text{m}]$ in arena \\
+Position Smoothing & EMA filter ($\alpha = 0.70$) & Eliminates hand tremor during object positioning \\
+Simulation Link & ZeroMQ Remote API (port 23000) & Real-time position updates and sensor telemetry \\
+Patrol Speed & $0.16\text{ m/s}$ cruise, $0.60\text{ rad/s}$ turn & Waypoint following with in-place corner turns \\
+Obstacle Safety Stop & Distance $< 0.65\text{m}$, angle $<\pm 50^\circ$ & Halts robot when obstacle enters forward path \\
+Frontal Ultrasonic Limit & Distance $< 0.18\text{m}$ & Secondary hardware sensor clearance check \\
 \bottomrule
-\end{tabular}
+\end{tabular*}
 \end{center}
 \vspace{-2pt}
 
 \section{Conclusion}
-This camera-driven digital twin demonstrates physical-to-virtual state synchronisation. By combining calibrated desk coordinate mapping with robust ArUco and three-color perception, physical obstacle movements reliably command virtual obstacles in CoppeliaSim, driving responsive, collision-free autonomous navigation in the Pioneer P3DX mobile robot.
+This system demonstrates a practical physical-to-virtual digital twin. By linking real-time computer vision with simulated mobile robotics, physical objects moved on a desk surface dynamically control virtual obstacles in CoppeliaSim, enabling the Pioneer P3DX mobile robot to interact with and respond safely to real-world physical placement.
 
 \end{document}
